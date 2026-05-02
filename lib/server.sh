@@ -310,13 +310,22 @@ ask_for_cores() {
 }
 
 build_and_install_with_spinner() {
+    local no_cache=false
+    if [ "${1-}" == "--no-cache" ]; then
+        no_cache=true
+    fi
+
     echo ""
     print_message $BLUE "--- Starting AzerothCore Build and Installation ---" true
     print_message $YELLOW "This may take a while..." true
 
     if is_docker_setup; then
         print_message $CYAN "Running Docker build..." true
-        (cd "$AZEROTHCORE_DIR" && "$DOCKER_EXEC_PATH" compose build) || handle_error "Docker build failed."
+        if [ "$no_cache" = true ]; then
+             (cd "$AZEROTHCORE_DIR" && "$DOCKER_EXEC_PATH" compose build --no-cache) || handle_error "Docker build failed."
+        else
+             (cd "$AZEROTHCORE_DIR" && "$DOCKER_EXEC_PATH" compose build) || handle_error "Docker build failed."
+        fi
         print_message $GREEN "--- Docker Build Process Completed Successfully ---" true
     else
         if [ ! -d "$BUILD_DIR" ]; then

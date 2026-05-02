@@ -22,7 +22,7 @@ check_dependencies() {
                 DOCKER_EXEC_PATH=$(command -v docker)
             fi
         else
-            local DEPENDENCIES=("git" "cmake" "make" "clang" "clang++" "tmux" "nc")
+            local DEPENDENCIES=("git" "cmake" "make" "clang" "clang++" "tmux" "nc" "mysql")
             print_message $CYAN "Standard mode: checking for build and server tools..." false
             for DEP in "${DEPENDENCIES[@]}"; do
                 if ! command -v "$DEP" &>/dev/null; then
@@ -90,6 +90,7 @@ install_dependencies() {
             dep_map["clang++"]="clang"
             dep_map["tmux"]="tmux"
             dep_map["nc"]="netcat-openbsd"
+            dep_map["mysql"]="mysql-client"
             dep_map["docker"]="docker.io"
             dep_map["boost"]="libboost-all-dev"
 
@@ -113,6 +114,7 @@ install_dependencies() {
             dep_map["clang"]="clang"
             dep_map["tmux"]="tmux"
             dep_map["nc"]="nmap-ncat"
+            dep_map["mysql"]="mysql"
             dep_map["docker"]="docker"
             dep_map["boost"]="boost-devel"
 
@@ -140,6 +142,7 @@ install_dependencies() {
             dep_map["clang"]="clang"
             dep_map["tmux"]="tmux"
             dep_map["nc"]="openbsd-netcat"
+            dep_map["mysql"]="mariadb-clients"
             dep_map["docker"]="docker"
             dep_map["boost"]="boost"
 
@@ -168,6 +171,7 @@ install_dependencies() {
             dep_map["clang++"]="llvm"
             dep_map["tmux"]="tmux"
             dep_map["nc"]="netcat"
+            dep_map["mysql"]="mysql-client"
             dep_map["docker"]="docker"
             dep_map["boost"]="boost"
 

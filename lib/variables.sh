@@ -39,6 +39,7 @@ DEFAULT_AUTH_PORT=3724
 DEFAULT_WORLD_PORT=8085
 DEFAULT_CORES_FOR_BUILD=""
 DEFAULT_USE_DOCKER=false
+DEFAULT_SKIP_DOCKER_PROMPT=false
 DEFAULT_CRON_PATH=""
 DEFAULT_CMAKE_C_COMPILER="/usr/bin/clang"
 DEFAULT_CMAKE_CXX_COMPILER="/usr/bin/clang++"
@@ -71,6 +72,7 @@ AUTH_PORT=""
 WORLD_PORT=""
 CORES="" # Runtime variable, takes its value from CORES_FOR_BUILD in config.
 USE_DOCKER=""
+SKIP_DOCKER_PROMPT=""
 
 # Runtime flags for controlling the main loop
 BUILD_ONLY=false
