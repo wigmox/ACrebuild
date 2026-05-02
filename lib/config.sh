@@ -26,8 +26,8 @@ load_config() {
     set -u # Re-enable unbound variable errors
 
     # --- Assign variables from config or use defaults if missing ---
-    AZEROTHCORE_DIR="${AZEROTHCORE_DIR:-$DEFAULT_AZEROTHCORE_DIR}"
-    BACKUP_DIR="${BACKUP_DIR:-$DEFAULT_BACKUP_DIR}"
+    AZEROTHCORE_DIR=$(expand_path "${AZEROTHCORE_DIR:-$DEFAULT_AZEROTHCORE_DIR}")
+    BACKUP_DIR=$(expand_path "${BACKUP_DIR:-$DEFAULT_BACKUP_DIR}")
     # Set DB_USER default based on whether USE_DOCKER is true
     USE_DOCKER="${USE_DOCKER:-$DEFAULT_USE_DOCKER}"
     if [ "$USE_DOCKER" = true ]; then
@@ -51,6 +51,7 @@ load_config() {
     POST_SHUTDOWN_DELAY_SECONDS="${POST_SHUTDOWN_DELAY_SECONDS:-$DEFAULT_POST_SHUTDOWN_DELAY_SECONDS}"
     CORES="${CORES_FOR_BUILD:-$DEFAULT_CORES_FOR_BUILD}"
     USE_DOCKER="${USE_DOCKER:-$DEFAULT_USE_DOCKER}"
+    SKIP_DOCKER_PROMPT="${SKIP_DOCKER_PROMPT:-$DEFAULT_SKIP_DOCKER_PROMPT}"
     CRON_PATH="${CRON_PATH:-$DEFAULT_CRON_PATH}"
 
     # --- [New] Assign build variables ---
@@ -59,16 +60,45 @@ load_config() {
     CMAKE_BUILD_FLAGS="${CMAKE_BUILD_FLAGS:-$DEFAULT_CMAKE_BUILD_FLAGS}"
 
 
-    # --- Assign non-user-configurable variables from defaults ---
-    AUTH_PORT="${DEFAULT_AUTH_PORT}"
-    WORLD_PORT="${DEFAULT_WORLD_PORT}"
-
     # --- Update dynamic paths based on loaded/defaulted AZEROTHCORE_DIR ---
     BUILD_DIR="$AZEROTHCORE_DIR/build"
-    SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/$server_config_suffix"
-    SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/$server_log_suffix"
-    AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/authserver"
-    WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/worldserver"
+
+    # Dynamic detection of binary and config paths
+    if [ -d "$AZEROTHCORE_DIR/env/bin" ]; then
+        # Modern AC setup
+        SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/env/etc"
+        SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/env/bin"
+        AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/bin/authserver"
+        WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/bin/worldserver"
+    elif [ -d "$AZEROTHCORE_DIR/env/dist/bin" ]; then
+        # Legacy/Standard AC setup
+        SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/env/dist/etc"
+        SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/env/dist/bin"
+        AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/authserver"
+        WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/worldserver"
+    else
+        # Fallback to defaults
+        SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/$server_config_suffix"
+        SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/$server_log_suffix"
+        AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/authserver"
+        WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/worldserver"
+    fi
+
+    # --- Try to parse ports from server configs, fallback to defaults ---
+    AUTH_PORT="$DEFAULT_AUTH_PORT"
+    WORLD_PORT="$DEFAULT_WORLD_PORT"
+
+    local auth_conf="$SERVER_CONFIG_DIR_PATH/authserver.conf"
+    local world_conf="$SERVER_CONFIG_DIR_PATH/worldserver.conf"
+
+    if [ -f "$auth_conf" ]; then
+        local p=$(grep "^RealmServerPort" "$auth_conf" | cut -d'=' -f2 | tr -d '[:space:]')
+        [ -n "$p" ] && AUTH_PORT="$p"
+    fi
+    if [ -f "$world_conf" ]; then
+        local p=$(grep "^WorldServerPort" "$world_conf" | cut -d'=' -f2 | tr -d '[:space:]')
+        [ -n "$p" ] && WORLD_PORT="$p"
+    fi
 
 
     # --- Configuration Migration/Update ---
@@ -110,6 +140,9 @@ save_config() {
 
 # Set to 'true' to enable Docker mode, 'false' for standard (local build) mode.
 USE_DOCKER="$USE_DOCKER"
+
+# Set to 'true' to skip the Docker detection prompt if you intentionally want standard mode.
+SKIP_DOCKER_PROMPT="$SKIP_DOCKER_PROMPT"
 
 # The full path to your azerothcore-wotlk source code directory.
 AZEROTHCORE_DIR="$AZEROTHCORE_DIR"
@@ -234,13 +267,20 @@ ask_for_core_installation_path() {
             load_config
         else
             print_message $CYAN "New path will be used for this session only." false
-            AZEROTHCORE_DIR="$user_input_path"
-            # Manually update dynamic paths
+            AZEROTHCORE_DIR=$(expand_path "$user_input_path")
+            # Reload paths dynamically
             BUILD_DIR="$AZEROTHCORE_DIR/build"
-            SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/$DEFAULT_SERVER_CONFIG_DIR_PATH_SUFFIX"
-            SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/$DEFAULT_SERVER_LOG_DIR_PATH_SUFFIX"
-            AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/authserver"
-            WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/worldserver"
+            if [ -d "$AZEROTHCORE_DIR/env/bin" ]; then
+                SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/env/etc"
+                SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/env/bin"
+                AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/bin/authserver"
+                WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/bin/worldserver"
+            else
+                SERVER_CONFIG_DIR_PATH="$AZEROTHCORE_DIR/env/dist/etc"
+                SERVER_LOG_DIR_PATH="$AZEROTHCORE_DIR/env/dist/bin"
+                AUTH_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/authserver"
+                WORLD_SERVER_EXEC="$AZEROTHCORE_DIR/env/dist/bin/worldserver"
+            fi
         fi
     fi
 

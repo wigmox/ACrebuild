@@ -279,7 +279,7 @@ apply_module_sql() {
 update_module() {
     local module_dir=$1
     print_message $BLUE "Attempting to pull latest changes for module $(basename "$module_dir")..." false
-    if run_command "git pull" "$module_dir"; then
+    if run_command CWD: "$module_dir" git pull; then
         print_message $GREEN "Successfully updated module $(basename "$module_dir")." false
         apply_module_sql "$module_dir"
     else
@@ -355,10 +355,10 @@ update_modules() {
             print_message $GREEN "Found Git repository: $(basename "$module")" false
 
             print_message $CYAN "Fetching updates for $(basename "$module")..." false
-            run_command "git fetch origin" "$module"
+            run_command CWD: "$module" git fetch origin
 
-            local=$(run_command "git rev-parse @" "$module")
-            remote=$(run_command "git rev-parse @{u}" "$module")
+            local=$(run_command CWD: "$module" git rev-parse @)
+            remote=$(run_command CWD: "$module" git rev-parse "@{u}")
 
             if [ "$local" != "$remote" ]; then
                 print_message $YELLOW "Update available for $(basename "$module")!" true

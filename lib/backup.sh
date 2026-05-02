@@ -260,7 +260,7 @@ restore_backup() {
         print_message $CYAN "Extracting backup archive..." false
         tar -xzf "$SELECTED_BACKUP_FILE" -C "$TEMP_RESTORE_DIR" || { print_message $RED "Error extracting archive." true; rm -rf "$TEMP_RESTORE_DIR"; return 1; }
 
-        EXTRACTED_CONTENT_DIR=$(find "$TEMP_RESTORE_DIR" -mindepth 1 -maxdepth 1 -type d)
+        EXTRACTED_CONTENT_DIR=$(find "$TEMP_RESTORE_DIR" -mindepth 1 -maxdepth 1 -type d -name "backup_*" | head -n 1)
         if [ -z "$EXTRACTED_CONTENT_DIR" ]; then
             print_message $RED "Could not find extracted content directory." true
             rm -rf "$TEMP_RESTORE_DIR"

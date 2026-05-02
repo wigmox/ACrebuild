@@ -51,16 +51,24 @@ show_menu() {
 
 # Function to check for a potential Docker setup and prompt the user to enable it.
 check_and_prompt_for_docker_usage() {
+    if [ "$SKIP_DOCKER_PROMPT" = true ]; then
+        return
+    fi
+
     if [ -f "$AZEROTHCORE_DIR/docker-compose.yml" ] && [ -n "$DOCKER_EXEC_PATH" ] && [ "$USE_DOCKER" = false ]; then
         echo ""
         print_message "$BLUE" "--- Docker Setup Detected ---" true
         print_message "$YELLOW" "A 'docker-compose.yml' file and the 'docker' command were found." false
         print_message "$CYAN" "The script is currently in non-Docker mode." false
-        print_message "$YELLOW" "Would you like to enable Docker Mode now? (y/n)" true
+        print_message "$YELLOW" "Would you like to enable Docker Mode? (y)es, (n)o, (s)kip future prompts:" true
         read -r docker_choice
         if [[ "$docker_choice" =~ ^[Yy]([Ee][Ss])?$ ]]; then
             print_message "$GREEN" "Enabling Docker Mode and saving to configuration..." true
             save_config_value "USE_DOCKER" "true"
+            load_config
+        elif [[ "$docker_choice" =~ ^[Ss]([Kk][Ii][Pp])?$ ]]; then
+            print_message "$GREEN" "Skipping future Docker detection prompts." true
+            save_config_value "SKIP_DOCKER_PROMPT" "true"
             load_config
         else
             print_message "$CYAN" "Keeping Docker Mode disabled. You can enable it later in the Configuration menu." false

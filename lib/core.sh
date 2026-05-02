@@ -40,21 +40,22 @@ get_package_manager() {
 }
 
 # Function to run a command and capture its output
+# Takes an arbitrary number of arguments where the first is the command.
+# If the first argument is "CWD:", the second argument is the directory to run the command in.
 run_command() {
-    local command_str="$1"
-    local cwd="$2"
+    local cwd=""
 
-    # Split the command string into an array to handle arguments safely.
-    # This avoids using 'eval', which can be a security risk.
-    local -a cmd_parts
-    read -r -a cmd_parts <<< "$command_str"
+    if [ "$1" = "CWD:" ]; then
+        cwd="$2"
+        shift 2
+    fi
 
     # Execute the command.
     # The subshell with 'cd' ensures we don't change the script's main directory.
     if [ -z "$cwd" ]; then
-        "${cmd_parts[@]}"
+        "$@"
     else
-        (cd "$cwd" && "${cmd_parts[@]}")
+        (cd "$cwd" && "$@")
     fi
 }
 
@@ -97,6 +98,9 @@ run_countdown_timer() {
     return 0 # Timeout (default to Yes)
 }
 
+# Global variable to track retry attempts and prevent infinite recursion
+RETRY_IN_PROGRESS=false
+
 # Function to handle errors
 handle_error() {
     local error_message="$1"
@@ -105,6 +109,11 @@ handle_error() {
     print_message $RED "ERROR: $error_message" true
 
     if [[ "$error_message" == *"CMake configuration failed"* || "$error_message" == *"Build process ('make install') failed"* || "$error_message" == *"Docker build failed"* ]]; then
+        if [ "$RETRY_IN_PROGRESS" = true ]; then
+            print_message $RED "A retry attempt also failed. Please check the logs and your environment." true
+            exit 1
+        fi
+
         if is_docker_setup; then
             print_message $YELLOW "A Docker build failure occurred. Would you like to try rebuilding with the '--no-cache' option?" true
             print_message $YELLOW "This can sometimes resolve issues with corrupted cache layers." true
@@ -116,15 +125,11 @@ handle_error() {
         local countdown_result=$?
 
         if [ "$countdown_result" -eq 0 ]; then # User chose 'yes' or timed out
+            RETRY_IN_PROGRESS=true
             if is_docker_setup; then
                 print_message $GREEN "Attempting to rebuild with '--no-cache'..." true
-                # We need a way to pass this option to the build function.
-                # For now, let's just attempt a normal rebuild, but ideally this would trigger a no-cache build.
-                # This highlights a need for better inter-function communication.
-                # Let's assume for now we can't easily pass a no-cache flag, so we just rebuild.
-                # A better implementation would be to set a global flag.
-                # For now, we will just call the main build function again.
-                build_and_install_with_spinner # This needs to be adapted to handle a no-cache flag
+                # Pass flag to use no-cache
+                build_and_install_with_spinner --no-cache
             else
                 print_message $GREEN "Running 'make clean'..." true
                 if [ -d "$BUILD_DIR" ]; then
@@ -136,6 +141,7 @@ handle_error() {
                 build_and_install_with_spinner
             fi
             print_message $GREEN "Rebuild process finished." true
+            RETRY_IN_PROGRESS=false
             exit 0
         elif [ "$countdown_result" -eq 1 ]; then # User chose 'no'
             print_message $RED "Skipping rebuild attempt. Exiting." true
@@ -173,5 +179,15 @@ is_container_running() {
         return 0
     else
         return 1
+    fi
+}
+
+# Function to expand tilde (~) in paths
+expand_path() {
+    local path=$1
+    if [[ "$path" == "~/"* ]]; then
+        echo "${HOME}${path:1}"
+    else
+        echo "$path"
     fi
 }
