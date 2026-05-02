@@ -14,10 +14,7 @@ ensure_db_is_running() {
         return 0
     fi
 
-    local db_status
-    db_status=$("$DOCKER_EXEC_PATH" inspect --format="{{.State.Status}}" ac-database 2>/dev/null)
-
-    if [ "$db_status" = "running" ]; then
+    if is_container_running "ac-database"; then
         return 0
     fi
 
