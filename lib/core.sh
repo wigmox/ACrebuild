@@ -160,3 +160,18 @@ handle_error() {
 is_docker_setup() {
     [ "$USE_DOCKER" = true ]
 }
+
+# Function to check if a Docker container is running
+is_container_running() {
+    local container_name=$1
+    if [ -z "$DOCKER_EXEC_PATH" ]; then
+        return 1
+    fi
+    local status
+    status=$("$DOCKER_EXEC_PATH" inspect --format="{{.State.Status}}" "$container_name" 2>/dev/null)
+    if [ "$status" = "running" ]; then
+        return 0
+    else
+        return 1
+    fi
+}

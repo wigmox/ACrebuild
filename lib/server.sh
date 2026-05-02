@@ -220,8 +220,8 @@ ask_for_update_confirmation() {
 
     local servers_running=false
     if is_docker_setup; then
-        # For Docker setups, we check if the ac-database container is running.
-        if is_container_running "ac-database"; then
+        # For Docker setups, we check if core containers are running.
+        if is_container_running "ac-database" || is_container_running "ac-worldserver" || is_container_running "ac-authserver"; then
             servers_running=true
         fi
     else
